@@ -1,75 +1,238 @@
+const PADDING = 10
+
 export class SolarPanel {
-  constructor(x, y, w, h, angle = 0) {
-    this.x = x;
-    this.y = y;
-    this.w = w;
-    this.h = h;
-    this.angle = angle;
-    this.selected = false;
-    this.dragging = false;
-    this.dragOffset = { x: 0, y: 0 };
+  constructor(p, panel) {
+    this.name = panel.name;
+    this.description = panel.description;
+    this.power = panel.power;
+    this.size = panel.size;
+    this.img = panel.img
+
+    this.position = p.createVector(p.mouseX, p.mouseY)
+    this.angle = 0;
+    this.isSelected = false
   }
 
-  isHovered(p) {
-    const mx = p.mouseX - this.x;
-    const my = p.mouseY - this.y;
-    const angleInRadians = (this.angle * Math.PI) / 180; // Convert angle to radians
-    const rx = mx * Math.cos(-angleInRadians) - my * Math.sin(-angleInRadians);
-    const ry = mx * Math.sin(-angleInRadians) + my * Math.cos(-angleInRadians);
-
-    return (
-      Math.abs(rx) < this.w / 2 &&
-      Math.abs(ry) < this.h / 2 &&
-      (Math.abs(Math.abs(rx) - this.w / 2) < 10 ||
-        Math.abs(Math.abs(ry) - this.h / 2) < 10)
-    );
-  }
-
-  isDragged(p) {
-    const mx = p.mouseX - this.x;
-    const my = p.mouseY - this.y;
-    const angleInRadians = (this.angle * Math.PI) / 180; // Convert angle to radians
-    const rx = mx * Math.cos(-angleInRadians) - my * Math.sin(-angleInRadians);
-    const ry = mx * Math.sin(-angleInRadians) + my * Math.cos(-angleInRadians);
-
-    return Math.abs(rx) < this.w / 2 && Math.abs(ry) < this.h / 2;
-  }
-
-  onMousePressed(p) {
-    if (this.isHovered(p)) {
-      this.rotating = true;
-    } else if (this.isDragged(p)) {
-      this.dragging = true;
-      this.dragOffset.x = p.mouseX - this.x;
-      this.dragOffset.y = p.mouseY - this.y;
-    }
-  }
-
-  onMouseDragged(p) {
-    if (this.dragging) {
-      this.x = p.mouseX - this.dragOffset.x;
-      this.y = p.mouseY - this.dragOffset.y;
-    } else if (this.rotating) {
-      const dx = p.mouseX - this.x;
-      const dy = p.mouseY - this.y;
-      const angleInRadians = Math.atan2(dy, dx);
-      this.angle = (angleInRadians * 180) / Math.PI; // Convert angle to degrees
-    }
-  }
-
-  onMouseReleased() {
-    this.dragging = false;
-    this.rotating = false;
+  setPosition(position) {
+    this.position = position;
   }
 
   draw(p) {
     p.push();
-    p.translate(this.x, this.y);
+    p.translate(this.position.x, this.position.y);
     p.rotate((this.angle * Math.PI) / 180); // Convert angle to radians for p5 rotation
-    p.stroke(this.selected ? "blue" : "black");
+    p.stroke(this.isSelected ? "blue" : "black");
     p.fill(200, 100, 100, 150);
-    p.rectMode(p.CENTER);
-    p.rect(0, 0, this.w, this.h);
+    p.rect(0, 0, this.size.w, this.size.h);
+    p.pop();
+  } 
+
+  checkAdjacent(p) {
+
+    let x = this.position.x
+    let y = this.position.y
+    let w = this.size.w
+    let h = this.size.h
+    let pa = PADDING
+
+    const bounds = [
+      {
+        left: x - w - pa,
+        right: x - pa,
+        top: y,
+        bottom: y + h,
+      }, 
+      {
+        left: x + w + pa,
+        right: x + 2*w + pa,
+        top: y,
+        bottom: y + h,
+      }, 
+      {
+        left: x,
+        right: x + w,
+        top: y + h + pa,
+        bottom: y + 2*h + pa,
+      }, 
+      {
+        left: x,
+        right: x + w,
+        top: y - pa - h,
+        bottom: y - pa,
+      }, 
+    ]
+
+    for (let bound of bounds) {
+
+      // TODO: check adjacent is empty
+      
+      if (p.mouseX > bound.left && p.mouseX < bound.right && p.mouseY < bound.bottom && p.mouseY > bound.top) {
+        this.drawGuidedPanel(p, bound.left, bound.top, this.size.w, this.size.h, 0)
+
+        return true
+      }
+
+    }
+
+    return false
+  }
+
+  showCopiedPanels(p) {
+
+    if (p.mouseX <= 10 || p.mouseY <= 10) return
+
+    let mx = p.mouseX
+    let my = p.mouseY
+    let w = this.size.w
+    let h = this.size.h
+    let x = this.position.x
+    let y = this.position.y
+    let pa = PADDING
+
+
+    // bottom-right
+    if (mx > x && my > y) {
+      let nx = Math.ceil((mx - x + pa) / (w + pa))
+      let ny = Math.ceil((my - y + pa) / (h + pa))
+
+      for (let i = 1; i <= ny; i++) {
+        for (let j = 1; j <= nx; j++) {
+          if (i === 1 && j === 1) continue
+          
+          this.drawGuidedPanel(p, x + (j-1) * (w + pa), y + (i-1) * (h + pa), w, h, 0)
+        }
+      }
+    }
+
+    // bottom-left
+    if (mx < x && my > y) {
+      let nx = Math.ceil(( x - mx) / (w + pa))
+      let ny = Math.ceil((my - y + pa) / (h + pa))
+
+      for (let i = 1; i <= ny; i++) {
+        for (let j = 1; j <= nx+1; j++) {
+          if (i === 1 && j === 1) continue
+          
+          this.drawGuidedPanel(p, x - (j-1) * (w + pa), y + (i-1) * (h + pa), w, h, 0)
+        }
+      }
+    }
+
+    // top-right
+    if (mx > x && my < y) {
+      let nx = Math.ceil((mx - x + pa) / (w + pa))
+      let ny = Math.ceil((y - my) / (h + pa))
+
+      for (let i = 1; i <= ny+1; i++) {
+        for (let j = 1; j <= nx; j++) {
+          if (i === 1 && j === 1) continue
+          
+          this.drawGuidedPanel(p, x + (j-1) * (w + pa), y - (i-1) * (h + pa), w, h, 0)
+        }
+      }
+    }
+
+    // top-left
+    if (mx < x && my < y) {
+      let nx = Math.ceil((x - mx) / (w + pa))
+      let ny = Math.ceil((y - my) / (h + pa))
+
+      for (let i = 1; i <= ny+1; i++) {
+        for (let j = 1; j <= nx+1; j++) {
+          if (i === 1 && j === 1) continue
+          
+          this.drawGuidedPanel(p, x - (j-1) * (w + pa), y - (i-1) * (h + pa), w, h, 0)
+        }
+      }
+    }
+
+  }
+
+  addCopiedPanels(p, setSolarPanels) {
+    let mx = p.mouseX
+    let my = p.mouseY
+    let w = this.size.w
+    let h = this.size.h
+    let x = this.position.x
+    let y = this.position.y
+    let pa = PADDING
+
+    
+    // bottom-right
+    if (mx > x && my > y) {
+      let nx = Math.ceil((mx - x + pa) / (w + pa))
+      let ny = Math.ceil((my - y + pa) / (h + pa))
+
+      for (let i = 1; i <= ny; i++) {
+        for (let j = 1; j <= nx; j++) {
+          if (i === 1 && j === 1) continue
+
+          let panel = new SolarPanel(p, this)
+          panel.setPosition(p.createVector(x + (j-1) * (w + pa), y + (i-1) * (h + pa))) 
+          setSolarPanels(panels => [...panels, panel]) 
+        }
+      }
+    }
+
+    // bottom-left
+    if (mx < x && my > y) {
+      let nx = Math.ceil(( x - mx) / (w + pa))
+      let ny = Math.ceil((my - y + pa) / (h + pa))
+
+      for (let i = 1; i <= ny; i++) {
+        for (let j = 1; j <= nx+1; j++) {
+          if (i === 1 && j === 1) continue
+          
+          let panel = new SolarPanel(p, this)
+          panel.setPosition(p.createVector(x - (j-1) * (w + pa), y + (i-1) * (h + pa)))
+          setSolarPanels(panels => [...panels, panel]) 
+        }
+      }
+    }
+
+    // top-right
+    if (mx > x && my < y) {
+      let nx = Math.ceil((mx - x + pa) / (w + pa))
+      let ny = Math.ceil((y - my) / (h + pa))
+
+      for (let i = 1; i <= ny+1; i++) {
+        for (let j = 1; j <= nx; j++) {
+          if (i === 1 && j === 1) continue
+          
+          let panel = new SolarPanel(p, this)
+          panel.setPosition(p.createVector(x + (j-1) * (w + pa), y - (i-1) * (h + pa)))
+          setSolarPanels(panels => [...panels, panel]) 
+        }
+      }
+    }
+
+    // top-left
+    if (mx < x && my < y) {
+      let nx = Math.ceil((x - mx) / (w + pa))
+      let ny = Math.ceil((y - my) / (h + pa))
+
+      for (let i = 1; i <= ny+1; i++) {
+        for (let j = 1; j <= nx+1; j++) {
+          if (i === 1 && j === 1) continue
+          
+          let panel = new SolarPanel(p, this)
+          panel.setPosition(p.createVector(x - (j-1) * (w + pa), y - (i-1) * (h + pa)))
+          setSolarPanels(panels => [...panels, panel]) 
+        }
+      }
+    }
+
+    
+  }
+
+  drawGuidedPanel(p, x, y, w, h, angle) {
+    p.push();
+    p.translate(x, y);
+    p.rotate((angle * Math.PI) / 180); // Convert angle to radians for p5 rotation
+    // p.stroke(this.isSelected ? "blue" : "black");
+    p.stroke("green")
+    p.fill(200, 100, 100, 50);
+    p.rect(0, 0, w, h);
     p.pop();
   }
 }
