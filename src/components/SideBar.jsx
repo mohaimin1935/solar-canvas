@@ -3,7 +3,7 @@ import { cn } from "../lib/utils"
 
 
 
-export const Sidebar = ({panels, setSelectedPanel, selectedPanel}) => {
+export const Sidebar = ({panels, setSelectedPanel, selectedPanel, mode}) => {
 
   const [search, setSearch] = useState("")
 
@@ -19,7 +19,7 @@ export const Sidebar = ({panels, setSelectedPanel, selectedPanel}) => {
         .map((panel, index) => (
           <div
             key={index}
-            onClick={() => setSelectedPanel(index)}
+            onClick={() => {if (mode === "copying") return; setSelectedPanel(index)}}
             className={cn(
               "flex gap-4 items-center hover:bg-slate-200 cursor-pointer p-3",
               index === selectedPanel && "bg-slate-200"
